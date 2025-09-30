@@ -1,0 +1,77 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: backend_postgres
+    environment:
+      POSTGRES_DB: backend_assignment
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - backend_network
+    restart: unless-stopped
+
+  # Backend API
+  backend:
+    build: .
+    container_name: backend_api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: backend_assignment
+      DB_USER: postgres
+      DB_PASSWORD: password
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      JWT_EXPIRE: 7d
+      CORS_ORIGIN: http://localhost:3001
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres
+    networks:
+      - backend_network
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+
+  # Frontend
+  frontend:
+    build: ./frontend
+    container_name: backend_frontend
+    ports:
+      - "3001:80"
+    depends_on:
+      - backend
+    networks:
+      - backend_network
+    restart: unless-stopped
+
+  # Redis (Optional - for caching)
+  redis:
+    image: redis:7-alpine
+    container_name: backend_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - backend_network
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  backend_network:
+    driver: bridge
+
